@@ -36,12 +36,10 @@
   (if (= (count e) 1) e (word-to-digits e)))
 
 (defn get-num2 [line]
-  (let [
-        left-indices (get-indices (partial str/index-of line))
+  (let [left-indices (get-indices (partial str/index-of line))
         ldigit (convert-to-sym (first (apply min-key second left-indices)))
         right-indices (get-indices (partial str/last-index-of line))
-        rdigit (convert-to-sym (first (apply max-key second right-indices))) 
-        ]
+        rdigit (convert-to-sym (first (apply max-key second right-indices)))]
     (parse-long (str/join [ldigit rdigit]))))
 
 
