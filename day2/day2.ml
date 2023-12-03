@@ -7,20 +7,19 @@ type draw = {
 let parse filename =
   let parse_game_info game_line =
     let parse_draw draw =
-      let parse_freq_and_colors =
+      let freq_and_colors =
         draw |>
         String.split_on_char ',' |>
         List.map String.trim |>
         List.map (String.split_on_char ' ')
       in
-      let helper c = function
-        | freq :: color :: [] when color = c -> Some(int_of_string freq)
-        |  _ -> None
-      in
       let get_freq c =
-        match (List.filter_map (helper c) parse_freq_and_colors) with
-        | v :: _ -> v
-        | _ -> 0
+        let finder = function
+          | freq :: color :: [] when color = c -> Some(int_of_string freq)
+          |  _ -> None
+        in
+        let tmp1 = List.filter_map finder freq_and_colors in
+        List.nth_opt tmp1 0 |> Option.value ~default:0
       in
       {red = (get_freq "red"); green = get_freq "green"; blue = get_freq "blue"}
     in
@@ -39,25 +38,20 @@ let parse filename =
   let lines = In_channel.with_open_text filename In_channel.input_lines in
   List.map parse_game_info lines
 
-let solve1 content r g b =
+let solve1 content red green blue =
   let open Stdio in
   let is_possible (game_id, draws) =
-    let flag =
-      draws |>
-      List.map (function
-       | {red; green; blue} when r >= red && g >= green && b >= blue -> true
-       | _ -> false) |>
-      List.fold_left (&&) true
-    in
-    if flag then game_id else 0
+    let max (r, g, b) a = ((max r a.red), (max g a.green), (max b a.blue)) in
+    let (r, g, b) = draws |> List.fold_left max (0, 0, 0) in
+    if r <= red && g <= green && b <= blue then game_id else 0
   in
   content |> List.map is_possible |> List.fold_left ( + ) 0 |> printf "one %i\n\n"
 
 let solve2 content =
   let open Stdio in
   let power_of_game(_, draws) =
-    let helper (r, g, b) a = ((max a.red r), (max a.green g), (max a.blue b)) in
-    let (r, g, b) = draws |> List.fold_left helper (0, 0, 0) in
+    let max (r, g, b) a = ((max a.red r), (max a.green g), (max a.blue b)) in
+    let (r, g, b) = draws |> List.fold_left max (0, 0, 0) in
     r * g * b
   in
   content |> List.map power_of_game |> List.fold_left ( + ) 0 |> printf "two %i\n"
