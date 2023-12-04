@@ -1,5 +1,6 @@
 use anyhow::Result;
 use partial_application::partial;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
 use std::fs::File;
@@ -33,17 +34,16 @@ fn process2(
     part_num_and_positions: &Vec<(i32, HashSet<(i32, i32)>)>,
 ) {
     fn calculate_gear_ratio(
-        part_num_and_positions: &Vec<(i32, HashSet<(i32, i32)>)>,
+        position_to_part_num: &HashMap<(i32, i32), i32>,
         gear_affected_positions: &HashSet<(i32, i32)>,
     ) -> Option<(i32, i32)> {
-        let affected_parts =
-            Vec::from_iter(part_num_and_positions.iter().filter_map(|(p, positions)| {
-                if positions.intersection(&gear_affected_positions).count() > 0 {
-                    Some(p)
-                } else {
-                    None
-                }
-            }));
+        let mut affected_parts = Vec::from_iter(
+            gear_affected_positions
+                .iter()
+                .filter_map(|p| position_to_part_num.get(p)),
+        );
+        affected_parts.sort();
+        affected_parts.dedup();
         return if affected_parts.len() == 2 {
             Some((*affected_parts[0], *affected_parts[1]))
         } else {
@@ -51,11 +51,18 @@ fn process2(
         };
     }
 
+    let position_to_part_num: HashMap<(i32, i32), i32> = HashMap::from_iter(
+        part_num_and_positions
+            .iter()
+            .flat_map(|(part_num, positions)| positions.iter().map(|p| (*p, *part_num))),
+    );
+
     let gear_affected_positions = symbol_and_affected_positions
         .iter()
         .filter_map(|(sym, positions)| if *sym == '*' { Some(positions) } else { None });
+
     let gear_ratios = gear_affected_positions
-        .filter_map(partial!(calculate_gear_ratio => part_num_and_positions, _));
+        .filter_map(partial!(calculate_gear_ratio => &position_to_part_num, _));
     println!("{}", gear_ratios.fold(0, |acc, (a, b)| acc + a * b));
 }
 
