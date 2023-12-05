@@ -91,7 +91,7 @@ fn process1(
             });
     let relevant_part_nums = Vec::from_iter(
         part_num_and_positions
-            .into_iter()
+            .iter()
             .filter_map(partial!(filter_relevant_parts => &symbol_affected_positions, _)),
     );
     println!("{}", relevant_part_nums.iter().fold(0, |acc, x| acc + x));
