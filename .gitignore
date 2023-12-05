@@ -2,3 +2,5 @@
 .*
 _build
 *data*txt
+target
+*.lock
