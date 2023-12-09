@@ -1,0 +1,12 @@
+(lang dune 3.11)
+
+(name day7)
+
+(generate_opam_files true)
+
+(package
+ (name day7)
+ (allow_empty)
+ (depends ocaml dune))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
