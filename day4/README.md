@@ -8,3 +8,4 @@ Execute this code via `elixir day4.exs <filename>`.
 3. Language is too easy to use :)
 4. The pipeline operator plugs the piped value as the first argument in invoked
    function, which is unlike other languages that provide similar operators.
+5. `IO.inspect(x)` simplifies printf-based debugging.
