@@ -9,39 +9,28 @@ defmodule Day9 do
     end)
   end
 
-  def predict_next_value(report) do
+  def predict_values(report) do
     if Enum.all?(report, fn x -> x == 0 end) do
-      0
+      {0, 0}
     else
-      diffs = Enum.zip(Enum.drop(report, 1), Enum.drop(report, -1))
-      |> Enum.map(fn e -> elem(e, 0) - elem(e, 1) end)
-      List.last(report) + predict_next_value(diffs)
+      diffs =
+        Enum.zip(Enum.drop(report, 1), Enum.drop(report, -1))
+        |> Enum.map(fn e -> elem(e, 0) - elem(e, 1) end)
+
+      predicted_values = predict_values(diffs)
+
+      {List.first(report) - elem(predicted_values, 0),
+       List.last(report) + elem(predicted_values, 1)}
     end
   end
 
-  def process1(reports) do
-    predictions = Enum.map(reports, &Day9.predict_next_value/1)
-    IO.puts(Enum.sum(predictions))
-  end
-
-  def predict_prev_value(report) do
-    if Enum.all?(report, fn x -> x == 0 end) do
-      0
-    else
-      diffs = Enum.zip(Enum.drop(report, 1), Enum.drop(report, -1))
-      |> Enum.map(fn e -> elem(e, 0) - elem(e, 1) end)
-      ret = List.first(report) - predict_prev_value(diffs)
-      ret
-    end
-  end
-
-  def process2(reports) do
-    predictions = Enum.map(reports, &Day9.predict_prev_value/1)
-    IO.puts(Enum.sum(predictions))
+  def process(reports) do
+    predictions = Enum.unzip(Enum.map(reports, &Day9.predict_values/1))
+    IO.puts(Enum.sum(elem(predictions, 0)))
+    IO.puts(Enum.sum(elem(predictions, 1)))
   end
 end
 
 filename = System.argv() |> List.first()
 reports = Day9.get_reports(filename)
-Day9.process1(reports)
-Day9.process2(reports)
+Day9.process(reports)
