@@ -7,4 +7,5 @@ Execute this code via `clj -M -m day6 <filename>`.
 2. [Your first
    project](https://clojure-doc.org/articles/tutorials/getting_started_cli/)
    describes the simplest bootstrapping for one file project.
-
+3. While _Paredit mode_ in Vim initially seemed unintuitive (compared to
+   traditional editing), forcing myself to use it helped with productivity.
