@@ -25,12 +25,12 @@
                                      (* scale num-of-expanding-elems))))]
                           (+ (calc-axis-parallel-distance r1 r2 expanding-rows)
                              (calc-axis-parallel-distance c1 c2 expanding-cols))))
-        cross-product (apply concat (for [g1 galaxies]
+        galaxy-pairs (apply concat (for [g1 galaxies]
                                       (for [g2 galaxies
                                             :when (not (= g1 g2))]
                                         [g1 g2])))]
 
-    (println (/ (reducers/fold + (map calc-distance cross-product)) 2))))
+    (println (/ (reducers/fold + (map calc-distance galaxy-pairs)) 2))))
 
 (defn -main [filename]
   (with-open [file (clojure.java.io/reader filename)]
