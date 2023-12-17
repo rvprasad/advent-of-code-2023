@@ -53,27 +53,27 @@ defmodule Day14 do
     |> Enum.map(fn x -> elem(x, 1) end)
   end
 
-  def process2(platform, seq_id, platform2seq_id, seq_id2platform) do
+  def process2(platform, seq_id, platform2seq_id, seq_id2platform, num_cycles) do
     if Map.has_key?(platform2seq_id, platform) do
       prev_position = Map.get(platform2seq_id, platform)
       cycle_length = seq_id - prev_position
-      remaining_tilts = rem(1_000_000_000 * 4 - prev_position, cycle_length)
+      remaining_tilts = rem(num_cycles * 4 - prev_position, cycle_length)
       Map.get(seq_id2platform, prev_position + remaining_tilts)
     else
       updated_platform2seq_id = Map.put(platform2seq_id, platform, seq_id)
       updated_seq_id2platform = Map.put(seq_id2platform, seq_id, platform)
       tilted = tilt(platform)
       rotated = rotate(tilted)
-      process2(rotated, seq_id + 1, updated_platform2seq_id, updated_seq_id2platform)
+      process2(rotated, seq_id + 1, updated_platform2seq_id, updated_seq_id2platform, num_cycles)
     end
   end
 
-  def process2(platform) do
+  def process2(platform, num_cycles) do
     platform
     |> Enum.zip()
     |> Enum.map(&Tuple.to_list/1)
     |> Enum.reverse()
-    |> process2(0, Map.new(), Map.new())
+    |> process2(0, Map.new(), Map.new(), num_cycles)
     |> calculate_load()
     |> IO.puts()
   end
@@ -82,4 +82,4 @@ end
 filename = System.argv() |> List.first()
 platform = Day14.get_platform(filename)
 Day14.process1(platform)
-Day14.process2(platform)
+Day14.process2(platform, 1_000_000_000)
