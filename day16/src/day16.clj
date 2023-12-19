@@ -39,21 +39,6 @@
         [\U \/] [[row (+ col 1) \R]]
         [\D \/] [[row (- col 1) \L]]))))
 
-(defn track-beam1 [workset pos-to-mirror visited is-outside?]
-  (if (empty? workset)
-    visited
-    (let [[src] (take 1 workset)
-          workset (disj workset src)]
-      (if (is-outside? src)
-        (track-beam1 workset pos-to-mirror visited is-outside?)
-        (let [visited (conj visited src)
-              targets (get-targets src pos-to-mirror)
-              workset (apply conj workset
-                             (filter (fn [x] (not (contains? visited x)))
-                                     targets))]
-          (println (type workset))
-          (track-beam1 workset pos-to-mirror visited is-outside?))))))
-
 (defn track-beam [initial-pos pos-to-mirror is-outside?]
   (loop [workset (hash-set initial-pos) visited (hash-set)]
     (if (empty? workset)
@@ -67,32 +52,57 @@
                 workset (apply conj workset
                                (filter (fn [x] (not (contains? visited x)))
                                        targets))]
-          ;(println src "->" targets (count visited) workset)
             (recur workset visited)))))))
 
-(defn calculate-energized-tiles [num-rows num-cols pos-to-mirror]
+(defn calculate-energized-tiles [num-rows num-cols
+                                 [start-row start-col start-dir]
+                                 pos-to-mirror]
   (let [is-outside? (fn [[row col _]]
                       (or (< row 0) (>= row num-rows)
                           (< col 0) (>= col num-cols)))
-        first-col (apply min (map second
-                                  (filter (fn [[r _]] (= r 0))
-                                          (keys pos-to-mirror))))
+        positions (keys pos-to-mirror)
+        possible-start-positions (if (contains? #{\L \R} start-dir)
+                                   (filter (fn [[r _]] (= r start-row))
+                                           positions)
+                                   (filter (fn [[_ c]] (= c start-col))
+                                           positions))
+        helper (fn [selector mapper default]
+                 (if (empty? possible-start-positions) default
+                     (apply selector
+                            (map mapper possible-start-positions))))
+        initial-position (condp = start-dir
+                           \L [start-row (helper max second (- num-cols 1)) \L]
+                           \R [start-row (helper min second 0) \R]
+                           \U [(helper max first 0) start-col \U]
+                           \D [(helper min first (- num-rows 1)) start-col \D])
+        initial-span (condp = start-dir
+                       \L (- num-cols (second initial-position) 1)
+                       \R (second initial-position)
+                       \U (- num-rows (first initial-position) 1)
+                       \D (first initial-position))
         num-tiles-traced-from-first-col
         (count (distinct (map (fn [[r c _]] [r c])
-                              (track-beam [0 first-col \R]
+                              (track-beam initial-position
                                           pos-to-mirror
-                                          is-outside?))))
-        tmp1
-        (count (distinct (map (fn [[r c _]] [r c])
-                              (track-beam1 (hash-set [0 first-col \R])
-                                           pos-to-mirror
-                                           (hash-set)
-                                           is-outside?))))]
-    (println (+ first-col num-tiles-traced-from-first-col))))
+                                          is-outside?))))]
+    (+ initial-span num-tiles-traced-from-first-col)))
+
+(defn calculate-energized-tiles1 [num-rows num-cols pos-to-mirror]
+  (calculate-energized-tiles num-rows num-cols [0 0 \R] pos-to-mirror))
+
+(defn calculate-energized-tiles2 [num-rows num-cols pos-to-mirror]
+  (let [start-positions 
+        (concat (map (fn [x] [x 0 \R]) (range 0 num-rows))
+                (map (fn [x] [x (- num-cols 1) \L]) (range 0 num-rows))
+                (map (fn [x] [0 x \D]) (range 0 num-cols))
+                (map (fn [x] [(- num-rows 1) x \U]) (range 0 num-cols)))
+        helper (fn [x] 
+                 (calculate-energized-tiles num-rows num-cols x pos-to-mirror))]
+    (println (apply max (map helper start-positions)))))
 
 (defn -main [filename]
   (with-open [file (clojure.java.io/reader filename)]
     (let [lines (remove str/blank? (line-seq file))
           [num-rows num-cols pos-to-mirror] (create-pos-to-mirror lines)]
-      ;(println pos-to-mirror)
-      (calculate-energized-tiles num-rows num-cols pos-to-mirror))))
+      (calculate-energized-tiles1 num-rows num-cols pos-to-mirror)
+      (calculate-energized-tiles2 num-rows num-cols pos-to-mirror))))
