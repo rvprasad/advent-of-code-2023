@@ -32,7 +32,6 @@ class Conjunction extends Component:
   var srcName2State = HashMap[String, Boolean]()
 
   def addSource(src: String) = srcName2State(src) = false
-  def getSrc: HashMap[String, Boolean] = srcName2State
   def isAllHigh: Boolean = srcName2State.values.forall(identity)
   def process(pulse: Boolean, srcName: String): Option[Boolean] =
     srcName2State(srcName) = pulse
