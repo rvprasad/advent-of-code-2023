@@ -1,14 +1,16 @@
 defmodule Day19.Part1 do
+  def canonical_target(target) do
+    case target do
+      "R" -> :reject
+      "A" -> :accept
+      x -> x
+    end
+  end
+
   defp create_action_function(guard, splitter, operator, target) do
     [category, value] = String.split(guard, splitter)
     value = Integer.parse(value) |> elem(0)
-
-    target =
-      case target do
-        "R" -> :reject
-        "A" -> :accept
-        x -> x
-      end
+    target = canonical_target(target)
 
     fn part ->
       if apply(operator, [part[category], value]), do: target, else: nil
@@ -98,20 +100,16 @@ defmodule Day19.Part1 do
 end
 
 defmodule Day19.Part2 do
-  defp canonical_target(target) do
-    case target do
-      "R" -> :reject
-      "A" -> :accept
-      x -> x
-    end
+  defp get_target_category_limit(action_desc, operator) do
+    [guard, target] = String.split(action_desc, ":")
+    [category, limit] = String.split(guard, operator)
+    {Day19.Part1.canonical_target(target), category, limit}
   end
 
   defp create_action(action_desc) do
     cond do
       String.contains?(action_desc, "<") ->
-        [guard, target] = String.split(action_desc, ":")
-        [category, limit] = String.split(guard, "<")
-        target = canonical_target(target)
+        {target, category, limit} = get_target_category_limit(action_desc, "<")
 
         fn part ->
           limit = Integer.parse(limit) |> elem(0)
@@ -133,9 +131,7 @@ defmodule Day19.Part2 do
         end
 
       String.contains?(action_desc, ">") ->
-        [guard, target] = String.split(action_desc, ":")
-        [category, limit] = String.split(guard, ">")
-        target = canonical_target(target)
+        {target, category, limit} = get_target_category_limit(action_desc, ">")
 
         fn part ->
           limit = Integer.parse(limit) |> elem(0)
