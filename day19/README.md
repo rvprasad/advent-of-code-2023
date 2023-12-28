@@ -19,3 +19,4 @@ Execute this code via `elixir day19.exs <filename>`.
    4. A way out may be to have _typeless_ view in IDEs.  Like we have views/lenses
       that add display inferred type hints, we could have a view/lense that
       suppresses the display of existing types and type errors.
+   5. Why not adapt the Hemingway writing mode for coding? :)
