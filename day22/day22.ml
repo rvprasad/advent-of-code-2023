@@ -2,15 +2,32 @@ type corner = { x : int; y : int; z : int }
 type brick = { first_corner : corner; second_corner : corner }
 
 let brick_comparator a b =
-  a.first_corner.x - b.first_corner.x + a.first_corner.y - b.first_corner.y
-  + a.first_corner.z - b.first_corner.z + a.second_corner.x - b.second_corner.x
-  + a.second_corner.y - b.second_corner.y + a.second_corner.z
-  - b.second_corner.z
+  let tmpa =
+    [
+      a.first_corner.z;
+      a.second_corner.z;
+      a.first_corner.y;
+      a.second_corner.y;
+      a.first_corner.x;
+      a.second_corner.x;
+    ]
+  in
+  let tmpb =
+    [
+      b.first_corner.z;
+      b.second_corner.z;
+      b.first_corner.y;
+      b.second_corner.y;
+      b.first_corner.x;
+      b.second_corner.x;
+    ]
+  in
+  if tmpa < tmpb then -1 else if tmpa = tmpb then 0 else 1
 
-let pp_brick out (b : brick) =
-  Format.fprintf out "((x1=%d; y1=%d, z1=%d), (x2=%d, y2=%d, z2=%d))"
-    b.first_corner.x b.first_corner.y b.first_corner.z b.second_corner.x
-    b.second_corner.y b.second_corner.z
+(* let pp_brick out (b : brick) =
+   Format.fprintf out "((x1=%d; y1=%d, z1=%d), (x2=%d, y2=%d, z2=%d))"
+     b.first_corner.x b.first_corner.y b.first_corner.z b.second_corner.x
+     b.second_corner.y b.second_corner.z *)
 
 let get_stack filename =
   In_channel.with_open_text filename In_channel.input_lines
@@ -53,7 +70,7 @@ module Brick = struct
   let compare = compare
 end
 
-module Brick2BricksMap = Map.Make (Brick)
+module BrickMap = Map.Make (Brick)
 
 let rec range a b = if a > b then [] else a :: range (a + 1) b
 let max_of = List.fold_left (fun acc e -> if acc < e then e else acc) 0
@@ -102,8 +119,8 @@ let settle_bricks stack empty_support_map =
   in
   List.rev setted_stack_in_rev
 
-let identify_support settled_stack empty_support_map =
-  let identify_support
+let identify_support settled_stack length width =
+  let identify_support_folder
       (brick_to_supported_bricks, brick_to_supporting_bricks, support_map) brick
       =
     let min_brick_x = min brick.first_corner.x brick.second_corner.x in
@@ -123,7 +140,7 @@ let identify_support settled_stack empty_support_map =
       supporting_bricks
       |> List.fold_left
            (fun map supporting_brick ->
-             Brick2BricksMap.update brick
+             BrickMap.update brick
                (function
                  | Some xs ->
                      Some
@@ -136,7 +153,7 @@ let identify_support settled_stack empty_support_map =
       supporting_bricks
       |> List.fold_left
            (fun map supporting_brick ->
-             Brick2BricksMap.update supporting_brick
+             BrickMap.update supporting_brick
                (function
                  | Some xs ->
                      Some (List.sort_uniq brick_comparator (brick :: xs))
@@ -148,41 +165,91 @@ let identify_support settled_stack empty_support_map =
     |> List.iter (fun (x, y) -> support_map.(x).(y) <- brick);
     (new_brick_to_supported_bricks, new_brick_to_supporting_bricks, support_map)
   in
-  List.fold_left identify_support
-    (Brick2BricksMap.empty, Brick2BricksMap.empty, empty_support_map)
-    settled_stack
+  let supported_map, supporting_map, _ =
+    List.fold_left identify_support_folder
+      (BrickMap.empty, BrickMap.empty, create_empty_support_map length width)
+      settled_stack
+  in
+  (supported_map, supporting_map)
 
 let solve_part1 stack length width =
-  let open Printf in
+  (* let open Printf in *)
   let settled_stack =
     settle_bricks stack (create_empty_support_map length width)
   in
-  let brick_to_supported_bricks, brick_to_supporting_bricks, _ =
-    identify_support settled_stack (create_empty_support_map length width)
+  let brick_to_supported_bricks, brick_to_supporting_bricks =
+    identify_support settled_stack length width
   in
-  Brick2BricksMap.iter
-    (fun brick bricks ->
-      Format.printf "brick %a -> " pp_brick brick;
-      bricks |> List.iter (Format.printf "brick %a " pp_brick);
-      printf "\n")
-    brick_to_supported_bricks;
-  Brick2BricksMap.iter
-    (fun brick bricks ->
-      Format.printf "brick %a <- " pp_brick brick;
-      bricks |> List.iter (Format.printf "brick %a " pp_brick);
-      printf "\n")
-    brick_to_supporting_bricks;
-
+  (* BrickMap.iter
+       (fun brick bricks ->
+         Format.printf "brick %a -> " pp_brick brick;
+         bricks |> List.iter (Format.printf "brick %a " pp_brick);
+         printf "\n")
+       brick_to_supported_bricks;
+     BrickMap.iter
+       (fun brick bricks ->
+         Format.printf "brick %a <- " pp_brick brick;
+         bricks |> List.iter (Format.printf "brick %a " pp_brick);
+         printf "\n")
+       brick_to_supporting_bricks; *)
   settled_stack
   |> List.filter (fun brick ->
-         match Brick2BricksMap.find_opt brick brick_to_supported_bricks with
+         match BrickMap.find_opt brick brick_to_supported_bricks with
          | None -> true
          | Some bricks ->
              bricks
              |> List.for_all (fun b ->
-                    Brick2BricksMap.find b brick_to_supporting_bricks
+                    BrickMap.find b brick_to_supporting_bricks
                     |> List.length > 1))
   |> List.length
+
+let solve_part2 stack length width =
+  let settled_stack =
+    settle_bricks stack (create_empty_support_map length width)
+  in
+  let brick_to_supported_bricks, brick_to_supporting_bricks =
+    identify_support settled_stack length width
+  in
+  let calculate_falling_bricks brick =
+    let rec helper supported_bricks acc =
+      if List.is_empty supported_bricks then acc
+      else
+        let bricks_supported_only_by_brick =
+          supported_bricks
+          |> List.filter (fun supported_brick ->
+                 match
+                   BrickMap.find_opt supported_brick brick_to_supporting_bricks
+                 with
+                 | Some bs ->
+                     bs
+                     |> List.for_all (fun b ->
+                            List.find_opt (fun a -> a == b) acc
+                            |> Option.is_some)
+                 | None -> false)
+        in
+        let next_acc = List.append acc bricks_supported_only_by_brick in
+        let next_supported_bricks =
+          bricks_supported_only_by_brick
+          |> List.map (fun supporting_brick ->
+                 match
+                   BrickMap.find_opt supporting_brick brick_to_supported_bricks
+                 with
+                 | Some bs -> bs
+                 | None -> [])
+          |> List.flatten
+          |> List.sort_uniq brick_comparator
+        in
+        helper next_supported_bricks next_acc
+    in
+    (helper
+       (BrickMap.find_opt brick brick_to_supported_bricks
+       |> Option.value ~default:[])
+       [ brick ]
+    |> List.sort_uniq brick_comparator
+    |> List.length)
+    - 1
+  in
+  List.map calculate_falling_bricks settled_stack |> List.fold_left ( + ) 0
 
 let () =
   let filename = Sys.argv.(1) in
@@ -198,5 +265,5 @@ let () =
     |> List.map (fun b -> max b.first_corner.y b.second_corner.y)
     |> max_of
   in
-  printf "%d\n" (List.length stack);
-  printf "%d\n" (solve_part1 stack length width)
+  printf "%d\n" (solve_part1 stack length width);
+  printf "%d\n" (solve_part2 stack length width)
