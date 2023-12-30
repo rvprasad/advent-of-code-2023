@@ -10,12 +10,13 @@ use substring::Substring;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let plan = get_plan(&args[1]);
-    println!(
-        "part 1 {:?}",
-        process_for_part1(&plan.iter().map(|(dir, count, _)| (*dir, *count)).collect())
-    );
-    println!("part 2 {:?}", process_for_part2(&plan));
+    if let Ok(plan) = get_plan(&args[1]) {
+        println!(
+            "part 1 {:?}",
+            process_for_part1(&plan.iter().map(|(dir, count, _)| (*dir, *count)).collect())
+        );
+        println!("part 2 {:?}", process_for_part2(&plan));
+    }
 }
 
 fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
@@ -31,18 +32,20 @@ fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
             .fold(
                 (None, -1, 0u64),
                 |(first_flip_side, last_col, count), (col, side)| {
-                    let ret = if first_flip_side.is_none() {
-                        (Some(side), *col, 1)
-                    } else if side == first_flip_side.unwrap() {
-                        let inc = if boundary_points.contains(&(row, *col - 1)) {
-                            TryInto::<u64>::try_into(*col - last_col).unwrap()
-                        } else {
-                            1
-                        };
-                        (first_flip_side, *col, count + inc)
-                    } else {
-                        let inc = TryInto::<u64>::try_into(*col - last_col).unwrap();
-                        (first_flip_side, *col, count + inc)
+                    let ret = match first_flip_side {
+                        None => (Some(side), *col, 1),
+                        Some(v) if side == v => {
+                            let inc = if boundary_points.contains(&(row, *col - 1)) {
+                                (*col - last_col) as u64
+                            } else {
+                                1
+                            };
+                            (first_flip_side, *col, count + inc)
+                        }
+                        _ => {
+                            let inc = (*col - last_col) as u64;
+                            (first_flip_side, *col, count + inc)
+                        }
                     };
                     ret
                 },
@@ -53,11 +56,11 @@ fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
 
     let new_plan = Vec::from_iter(plan.iter().map(|(_, _, color)| {
         let mut chars = color.chars();
-        let dir = match chars.nth(7).unwrap() {
-            '0' => 'R',
-            '1' => 'D',
-            '2' => 'L',
-            '3' => 'U',
+        let dir = match chars.nth(7) {
+            Some('0') => 'R',
+            Some('1') => 'D',
+            Some('2') => 'L',
+            Some('3') => 'U',
             _ => panic!("Invalid state"),
         };
         let count = i32::from_str_radix(color.substring(2, 7), 16).unwrap();
@@ -122,13 +125,12 @@ fn process_for_part1(plan: &Vec<(char, i32)>) -> i32 {
 
     let trench_with_sides = dig_trench(plan);
     let trench = trench_with_sides.iter().map(|x| x.0);
-    let boundary = HashSet::from_iter(trench.clone().map(|pos| pos.clone()));
-    let num_cols = trench.clone().map(|(_, c)| c).max().unwrap().clone() + 1;
-    let num_rows = trench.map(|(r, _)| r).max().unwrap().clone() + 1;
-    let (row, col) = find_internal_point(&boundary, num_rows, num_cols);
-    let mut work_set = HashSet::new();
-    let mut dug_positions = boundary.clone();
-    work_set.insert((row, col));
+    let rows_and_cols: (Vec<i32>, Vec<i32>) = trench.clone().unzip();
+    let num_rows = rows_and_cols.0.iter().max().unwrap() + 1;
+    let num_cols = rows_and_cols.1.iter().max().unwrap() + 1;
+    let boundary = HashSet::from_iter(trench.map(|pos| pos.clone()));
+    let mut work_set = HashSet::from([find_internal_point(&boundary, num_rows, num_cols)]);
+    let mut dug_positions = boundary;
     while !work_set.is_empty() {
         let mut new_work_set = HashSet::new();
         for work in &work_set {
@@ -150,7 +152,7 @@ fn process_for_part1(plan: &Vec<(char, i32)>) -> i32 {
         work_set.clear();
         work_set.extend(new_work_set);
     }
-    dug_positions.len().try_into().unwrap()
+    dug_positions.len() as i32
 }
 
 fn dig_trench(plan: &Vec<(char, i32)>) -> Vec<((i32, i32), char)> {
@@ -217,22 +219,22 @@ fn dig_trench(plan: &Vec<(char, i32)>) -> Vec<((i32, i32), char)> {
             },
         )
         .3;
-    let trench = trench_with_sides.iter().map(|x| x.0);
-    let row_shift = -trench.clone().map(|(r, _)| r).min().unwrap();
-    let col_shift = -trench.map(|(_, c)| c).min().unwrap();
+    let trench: (Vec<i32>, Vec<i32>) = trench_with_sides.iter().map(|x| x.0).unzip();
+    let row_shift = -trench.0.iter().min().unwrap();
+    let col_shift = -trench.1.iter().min().unwrap();
     trench_with_sides
         .iter()
         .map(|((r, c), s)| ((r + row_shift, c + col_shift), *s))
         .collect()
 }
 
-fn get_plan(filename: &String) -> Vec<(char, i32, String)> {
+fn get_plan(filename: &String) -> std::io::Result<Vec<(char, i32, String)>> {
     let mut plan = Vec::new();
 
-    let f = File::open(filename).unwrap();
+    let f = File::open(filename)?;
     let reader = BufReader::new(f);
 
-    for line in reader.lines().map(|l| l.unwrap()) {
+    for line in reader.lines().flatten() {
         let split: Vec<String> = line.split(' ').map(String::from).collect();
         plan.push((
             split[0].chars().next().unwrap(),
@@ -241,5 +243,5 @@ fn get_plan(filename: &String) -> Vec<(char, i32, String)> {
         ));
     }
 
-    plan
+    Ok(plan)
 }

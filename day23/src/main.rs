@@ -10,31 +10,35 @@ type Position = (i32, i32);
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let (map, slopes, begin, end) = get_map(&args[1]);
-    println!("part1 {:?}", solve_part1(&map, &slopes, begin, end));
-    println!("part2 {:?}", solve_part2(&map, begin, end));
+    if let Ok((map, slopes, begin, end)) = get_map(&args[1]) {
+        println!("part1 {:?}", solve_part1(&map, &slopes, begin, end));
+        println!("part2 {:?}", solve_part2(&map, begin, end));
+    }
 }
 
 fn solve_part2(map: &HashMap<Position, Vec<Position>>, begin: Position, end: Position) -> usize {
     let mut distances = HashMap::new();
 
-    for pos in map.keys().filter(|k| map.get(k).unwrap().len() > 2) {
-        let mut work_list = Vec::from_iter(map.get(pos).unwrap().iter().map(|s| vec![pos, s]));
-        while let Some(mut path) = work_list.pop() {
-            let last_pos = path.last().unwrap();
-            let neighbors = map.get(last_pos).unwrap();
-            if neighbors.len() == 2 {
-                let next_pos = neighbors
-                    .iter()
-                    .filter(|n| !path.contains(n))
-                    .next()
-                    .unwrap();
-                path.push(next_pos);
-                work_list.push(path);
-            } else {
-                let len = path.len() - 1;
-                distances.insert((path[0], *last_pos), len);
-                distances.insert((*last_pos, path[0]), len);
+    for entry in map.iter().filter(|(_, v)| v.len() > 2) {
+        let mut work_list = Vec::from_iter(entry.1.iter().map(|s| vec![entry.0, s]));
+        while let Some(path) = work_list.pop() {
+            if let Some((last_pos, Some(neighbors))) = path.last().map(|k| (k, map.get(k))) {
+                if neighbors.len() == 2 {
+                    neighbors
+                        .iter()
+                        .filter(|n| !path.contains(n))
+                        .next()
+                        .iter()
+                        .for_each(|p| {
+                            let mut new_path = path.clone();
+                            new_path.push(p);
+                            work_list.push(new_path)
+                        });
+                } else {
+                    let len = path.len() - 1;
+                    distances.insert((path[0], *last_pos), len);
+                    distances.insert((*last_pos, path[0]), len);
+                }
             }
         }
     }
@@ -47,12 +51,12 @@ fn solve_part2(map: &HashMap<Position, Vec<Position>>, begin: Position, end: Pos
     }
 
     let length_calculator = |path: &Vec<Position>| {
-         iter::zip(path.iter().take(path.len() - 1), path.iter().skip(1))
-            .map(|pair| distances.get(&pair).unwrap())
+        iter::zip(path.iter().take(path.len() - 1), path.iter().skip(1))
+            .filter_map(|pair| distances.get(&pair))
             .sum()
     };
 
-    let successor_filter = |position: &Position| new_map.get(&position).unwrap().clone();
+    let successor_filter = |position: &Position| new_map.get(&position).map(|v| v.clone());
     solve(&new_map, successor_filter, length_calculator, begin, end)
 }
 
@@ -65,18 +69,19 @@ fn solve_part1(
     let successor_filter = |position: &Position| {
         let (r, c) = position;
         let slope = slopes.get(&position);
-        map.get(&position)
-            .unwrap()
-            .iter()
-            .filter(|(nr, nc)| match slope {
-                Some('>') => nc > c,
-                Some('<') => nc < c,
-                Some('v') => nr > r,
-                Some('^') => nr < r,
-                _ => true,
-            })
-            .copied()
-            .collect::<Vec<Position>>()
+        map.get(&position).map(|successors| {
+            successors
+                .iter()
+                .filter(|(nr, nc)| match slope {
+                    Some('>') => nc > c,
+                    Some('<') => nc < c,
+                    Some('v') => nr > r,
+                    Some('^') => nr < r,
+                    _ => true,
+                })
+                .copied()
+                .collect::<Vec<Position>>()
+        })
     };
     let length_calculator = |path: &Vec<Position>| path.len() - 1;
 
@@ -91,31 +96,33 @@ fn solve<S, L>(
     end: Position,
 ) -> usize
 where
-    S: Fn(&Position) -> Vec<Position>,
+    S: Fn(&Position) -> Option<Vec<Position>>,
     L: Fn(&Vec<Position>) -> usize,
 {
     let mut ret = 0;
     let mut position_2_unexplored_successors: HashMap<Position, Vec<Position>> = HashMap::new();
     let mut path: Vec<Position> = Vec::new();
     path.push(begin);
-    position_2_unexplored_successors.insert(
-        begin,
-        map.get(&begin).unwrap().into_iter().copied().collect(),
-    );
+    position_2_unexplored_successors
+        .insert(begin, map.get(&begin).map_or(Vec::new(), |v| (*v).clone()));
     while let Some(cur_pos) = path.pop() {
-        let unexplored_successors: &mut Vec<Position> =
-            position_2_unexplored_successors.get_mut(&cur_pos).unwrap();
-        if let Some(successor) = unexplored_successors.pop() {
-            path.push(cur_pos);
-            if successor != end && !path.contains(&successor) {
-                path.push(successor);
-                let next_successors = successor_filter(&successor);
-                position_2_unexplored_successors.insert(successor, next_successors);
-            }
-            if successor == end {
-                path.push(successor);
-                ret = cmp::max(ret, length_calculator(&path));
-                path.pop();
+        if let Some(unexplored_successors) = position_2_unexplored_successors.get_mut(&cur_pos) {
+            if let Some(successor) = unexplored_successors.pop() {
+                path.push(cur_pos);
+                if successor != end && !path.contains(&successor) {
+                    path.push(successor);
+                    successor_filter(&successor)
+                        .iter()
+                        .for_each(|next_successors| {
+                            position_2_unexplored_successors
+                                .insert(successor, next_successors.clone());
+                        });
+                }
+                if successor == end {
+                    path.push(successor);
+                    ret = cmp::max(ret, length_calculator(&path));
+                    path.pop();
+                }
             }
         }
     }
@@ -124,19 +131,19 @@ where
 
 fn get_map(
     filename: &String,
-) -> (
+) -> std::io::Result<(
     HashMap<Position, Vec<Position>>,
     HashMap<Position, char>,
     Position,
     Position,
-) {
+)> {
     let mut slopes = HashMap::new();
 
-    let f = File::open(filename).unwrap();
+    let f = File::open(filename)?;
     let reader = BufReader::new(f);
     let mut positions = Vec::new();
 
-    for (r, line) in reader.lines().map(|l| l.unwrap()).enumerate() {
+    for (r, line) in reader.lines().flatten().enumerate() {
         for (c, chr) in line.chars().enumerate() {
             if chr != '#' {
                 if chr != '.' {
@@ -147,9 +154,10 @@ fn get_map(
         }
     }
 
+    let rows_and_cols: (Vec<i32>, Vec<i32>) = positions.iter().cloned().unzip();
+    let num_rows = rows_and_cols.0.iter().max().unwrap() + 1;
+    let num_cols = rows_and_cols.1.iter().max().unwrap() + 1;
     let deltas = vec![(-1, 0), (1, 0), (0, -1), (0, 1)];
-    let num_rows = positions.iter().map(|(r, _)| r).max().unwrap() + 1;
-    let num_cols = positions.iter().map(|(_, c)| c).max().unwrap() + 1;
     let map = HashMap::from_iter(positions.iter().map(|(r, c)| {
         (
             (*r, *c),
@@ -174,5 +182,5 @@ fn get_map(
         .next()
         .unwrap()
         .clone();
-    (map, slopes, begin, end)
+    Ok((map, slopes, begin, end))
 }
