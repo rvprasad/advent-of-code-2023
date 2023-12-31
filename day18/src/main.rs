@@ -21,7 +21,7 @@ fn main() {
 
 fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
     fn count_internal_points(
-        row: i32,
+        row: &i32,
         cols: &Vec<(i32, char)>,
         boundary_points: &HashSet<(i32, i32)>,
     ) -> u64 {
@@ -35,7 +35,7 @@ fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
                     let ret = match first_flip_side {
                         None => (Some(side), *col, 1),
                         Some(v) if side == v => {
-                            let inc = if boundary_points.contains(&(row, *col - 1)) {
+                            let inc = if boundary_points.contains(&(*row, *col - 1)) {
                                 (*col - last_col) as u64
                             } else {
                                 1
@@ -79,7 +79,7 @@ fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
     let boundary_points = HashSet::from_iter(trench_with_sides.iter().map(|x| x.0).into_iter());
     row_to_vert_boundary_points
         .keys()
-        .map(|row| count_internal_points(*row, &row_to_vert_boundary_points[row], &boundary_points))
+        .map(|row| count_internal_points(row, &row_to_vert_boundary_points[row], &boundary_points))
         .sum::<u64>()
 }
 
@@ -90,20 +90,20 @@ fn process_for_part1(plan: &Vec<(char, i32)>) -> i32 {
         num_cols: i32,
     ) -> (i32, i32) {
         fn is_pos_inside(
-            row: i32,
-            col: i32,
+            row: &i32,
+            col: &i32,
             num_rows: i32,
             num_cols: i32,
             boundary: &HashSet<(i32, i32)>,
         ) -> bool {
             let col_inc_edge_count = ((col + 1)..num_cols)
-                .filter(|c| boundary.contains(&(row, *c)))
+                .filter(|c| boundary.contains(&(*row, *c)))
                 .count();
-            let col_dec_edge_count = (0..col).filter(|c| boundary.contains(&(row, *c))).count();
+            let col_dec_edge_count = (0..*col).filter(|c| boundary.contains(&(*row, *c))).count();
             let row_inc_edge_count = ((row + 1)..num_rows)
-                .filter(|r| boundary.contains(&(*r, col)))
+                .filter(|r| boundary.contains(&(*r, *col)))
                 .count();
-            let row_dec_edge_count = (0..row).filter(|r| boundary.contains(&(*r, col))).count();
+            let row_dec_edge_count = (0..*row).filter(|r| boundary.contains(&(*r, *col))).count();
             col_inc_edge_count % 2 == 1
                 && col_dec_edge_count % 2 == 1
                 && row_inc_edge_count % 2 == 1
@@ -119,7 +119,7 @@ fn process_for_part1(plan: &Vec<(char, i32)>) -> i32 {
                     && *c < num_cols
                     && !boundary.contains(&(*r, *c))
             })
-            .find(|(r, c)| is_pos_inside(*r, *c, num_rows, num_cols, boundary))
+            .find(|(r, c)| is_pos_inside(r, c, num_rows, num_cols, boundary))
             .unwrap()
     }
 
