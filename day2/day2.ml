@@ -32,7 +32,7 @@ let parse filename =
   List.map parse_game_info lines
 
 let solve1 content red green blue =
-  let open Stdio in
+  let open Printf in
   let is_possible (game_id, draws) =
     let max (r, g, b) a = (max r a.red, max g a.green, max b a.blue) in
     let r, g, b = draws |> List.fold_left max (0, 0, 0) in
@@ -42,7 +42,7 @@ let solve1 content red green blue =
   |> printf "one %i\n\n"
 
 let solve2 content =
-  let open Stdio in
+  let open Printf in
   let power_of_game (_, draws) =
     let max (r, g, b) a = (max a.red r, max a.green g, max a.blue b) in
     let r, g, b = draws |> List.fold_left max (0, 0, 0) in
