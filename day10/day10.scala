@@ -46,14 +46,14 @@ def getPipeAtStartNode(node: Node, graph: Graph): Char = {
 def getLoop(startNode: Node, graph:Graph): List[Node] = {
   def getNeighbors(node: Node): List[Node] = {
     val pipe = if graph(node) == 'S' then getPipeAtStartNode(startNode, graph) else graph(node)
-    val possibleNeighbors = pipe match {
+    val possibleNeighbors = pipe match
       case '|' => List((node._1 - 1, node._2), (node._1 + 1, node._2))
       case '-' => List((node._1, node._2 - 1), (node._1, node._2 + 1))
       case 'L' => List((node._1 - 1, node._2), (node._1, node._2 + 1))
       case 'J' => List((node._1 - 1, node._2), (node._1, node._2 - 1))
       case '7' => List((node._1 + 1, node._2), (node._1, node._2 - 1))
       case 'F' => List((node._1 + 1, node._2), (node._1, node._2 + 1))
-    }
+
     val validNeighbors = possibleNeighbors.filter(graph.contains)
     List.from(validNeighbors)
   }
@@ -63,12 +63,12 @@ def getLoop(startNode: Node, graph:Graph): List[Node] = {
   var prevNode = startNode
   var node = getNeighbors(startNode).head
 
-  while (node != startNode) {
+  while (node != startNode)
     val neighbor = getNeighbors(node).filter{ _ != prevNode }.head
     prevNode = node
     path.addOne(node)
     node = neighbor
-  }
+
   path.addOne(node)
   path.toList
 }
@@ -85,7 +85,7 @@ def process2(sketch: Sketch) = {
   def getNeighbors(node: Node): List[Node] =
     List((node._1 - 1, node._2), (node._1 + 1, node._2), (node._1, node._2 - 1), (node._1, node._2 + 1))
 
-  def getContiguouslyOpenNeighboringPositions(node: Node, pipe: Char): (List[Node], List[Node]) = {
+  def getContiguousNeighboringPositions(node: Node, pipe: Char): (List[Node], List[Node]) = {
     val (r, c) = node
     pipe match {
       case '|' => (List((r-1, c-1), (r, c-1), (r+1, c-1)), List((r-1, c+1), (r, c+1), (r+1, c+1)))
@@ -109,7 +109,7 @@ def process2(sketch: Sketch) = {
         case ('7', 'J') | ('F', 'L') if prevGroup.size == 1 => { val (r, c) = prevGroup.head ; List((r-1, c)) }
         case ('J', '7') | ('L', 'F') if prevGroup.size == 1 => { val (r, c) = prevGroup.head ; List((r+1, c)) }
         case _ => {
-          val (group1, group2)= getContiguouslyOpenNeighboringPositions(node, pipe)
+          val (group1, group2)= getContiguousNeighboringPositions(node, pipe)
           if (group1.exists(prevGroup.contains)) then group1 else group2
         }
       }
@@ -126,10 +126,9 @@ def process2(sketch: Sketch) = {
       val node = workList.head
       workList -= node
       expandedGroup.addOne(node)
-      if (isValidNode(node)) {
+      if (isValidNode(node))
         val neighbors = getNeighbors(node).filter { n => !nodesInLoop.contains(n) && !expandedGroup.contains(n) }
         workList.addAll(neighbors)
-      }
     }
     expandedGroup.toSet
   }
@@ -147,11 +146,10 @@ def process2(sketch: Sketch) = {
   val liningNodes = gatherNodesLiningOneSideOfLoop(loop).filter { !nodesInLoop.contains(_) }
   val expandedGroup = expandGroup(liningNodes, nodesInLoop)
   val validExpandedGroup = expandedGroup.filter(isValidNode)
-  if (expandedGroup.exists { n => !isValidNode(n) } || liningNodes.size > nodesInLoop.size) {
+  if (expandedGroup.exists { n => !isValidNode(n) } || liningNodes.size > nodesInLoop.size) then
     println(sketch.num_rows * sketch.num_cols - nodesInLoop.size - validExpandedGroup.size)
-  } else {
+  else
     println(validExpandedGroup.size)
-  }
 }
 
 @main def main(filename: String) = {
