@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::env;
@@ -27,8 +28,7 @@ fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
     ) -> u64 {
         let mut cols = cols.clone();
         cols.sort();
-        let ret = cols
-            .iter()
+        cols.iter()
             .fold(
                 (None, -1, 0u64),
                 |(first_flip_side, last_col, count), (col, side)| {
@@ -50,8 +50,7 @@ fn process_for_part2(plan: &Vec<(char, i32, String)>) -> u64 {
                     ret
                 },
             )
-            .2;
-        ret
+            .2
     }
 
     let new_plan = Vec::from_iter(plan.iter().map(|(_, _, color)| {
@@ -228,7 +227,7 @@ fn dig_trench(plan: &Vec<(char, i32)>) -> Vec<((i32, i32), char)> {
         .collect()
 }
 
-fn get_plan(filename: &String) -> std::io::Result<Vec<(char, i32, String)>> {
+fn get_plan(filename: &String) -> Result<Vec<(char, i32, String)>> {
     let mut plan = Vec::new();
 
     let f = File::open(filename)?;
@@ -238,7 +237,7 @@ fn get_plan(filename: &String) -> std::io::Result<Vec<(char, i32, String)>> {
         let split: Vec<String> = line.split(' ').map(String::from).collect();
         plan.push((
             split[0].chars().next().unwrap(),
-            split[1].parse::<i32>().unwrap(),
+            split[1].parse::<i32>()?,
             split[2].clone(),
         ));
     }
