@@ -1,5 +1,6 @@
 use anyhow::Result;
 use itertools::iproduct;
+use std::convert::identity;
 use std::env;
 use std::fs::File;
 use std::io::BufRead;
@@ -30,8 +31,7 @@ fn process_for_part1(patterns: &Vec<Vec<String>>) -> usize {
 fn process_for_part2(patterns: &Vec<Vec<String>>) -> usize {
     fn calculate_summary(pattern: &Vec<String>) -> (Vec<usize>, Vec<usize>) {
         let hor = get_mirroring_indices(&pattern);
-        let transposed = transpose(&pattern);
-        let ver = get_mirroring_indices(&transposed);
+        let ver = get_mirroring_indices(&transpose(&pattern));
         (hor, ver)
     }
 
@@ -39,7 +39,7 @@ fn process_for_part2(patterns: &Vec<Vec<String>>) -> usize {
         .iter()
         .map(|pattern| {
             let (old_hor, old_ver) = calculate_summary(pattern);
-            let ret = iproduct!(0..(pattern.len()), 0..(pattern[0].len()))
+            iproduct!(0..(pattern.len()), 0..(pattern[0].len()))
                 .filter(|(i, j)| pattern[*i].chars().nth(*j).unwrap() == '#')
                 .map(|(i, j)| {
                     let mut copy = pattern.clone();
@@ -53,15 +53,14 @@ fn process_for_part2(patterns: &Vec<Vec<String>>) -> usize {
                         return tmp1.map(|x| x * 100);
                     }
 
-                    let tmp2 = new_ver.iter().filter(|e| !old_ver.contains(e)).next();
-                    if tmp2.is_some() {
-                        tmp2.map(|x| x * 1)
-                    } else {
-                        None
-                    }
-                });
-            ret.unwrap()
+                    new_ver
+                        .iter()
+                        .filter(|e| !old_ver.contains(e))
+                        .next()
+                        .map(|x| x * 1)
+                })
         })
+        .filter_map(identity)
         .sum()
 }
 
@@ -80,9 +79,7 @@ fn get_mirroring_indices(pattern: &Vec<String>) -> Vec<usize> {
 }
 
 fn transpose(pattern: &Vec<String>) -> Vec<String> {
-    let range = 0..(pattern.first().unwrap().len());
-    let mut transpose = Vec::new();
-    range.clone().for_each(|_| transpose.push(String::from("")));
+    let mut transpose = Vec::from_iter((0..pattern[0].len()).map(|_| String::from("")));
     for row in pattern {
         for (i, ch) in row.char_indices() {
             transpose[i].push(ch);
@@ -93,10 +90,10 @@ fn transpose(pattern: &Vec<String>) -> Vec<String> {
 
 fn get_patterns(filename: &String) -> Result<Vec<Vec<String>>> {
     let mut patterns = Vec::new();
+    let mut cur_pattern = Vec::new();
 
     let f = File::open(filename)?;
     let reader = BufReader::new(f);
-    let mut cur_pattern = Vec::new();
 
     for line in reader.lines().flatten() {
         if line.is_empty() {
