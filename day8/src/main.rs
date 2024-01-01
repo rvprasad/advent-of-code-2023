@@ -1,3 +1,4 @@
+use anyhow::Result;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
@@ -13,9 +14,10 @@ struct Data {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let data = get_data(&args[1]);
-    println!("{:?}", process1(&data));
-    println!("{:?}", process2(&data));
+    if let Ok(data) = get_data(&args[1]) {
+        println!("{:?}", process1(&data));
+        println!("{:?}", process2(&data));
+    }
 }
 
 fn process2(data: &Data) -> usize {
@@ -38,10 +40,7 @@ fn process2(data: &Data) -> usize {
         .map(|k| calculate_steps(k, |x| x.ends_with("Z"), data, 0, 0))
         .collect::<Vec<usize>>();
     let gcd = calculate_gcd(&strides[0..]);
-    return strides
-        .iter()
-        .fold(1usize, |acc, e| acc.checked_mul(*e / gcd).unwrap())
-        / gcd;
+    return strides.iter().fold(gcd, |acc, e| acc * *e / gcd);
 }
 
 fn process1(data: &Data) -> usize {
@@ -69,10 +68,10 @@ fn calculate_steps(
     return calculate_steps(&new_node, is_end_node, data, 0, len + data.movements.len());
 }
 
-fn get_data(filename: &String) -> Data {
-    let f = File::open(filename).unwrap();
+fn get_data(filename: &String) -> Result<Data> {
+    let f = File::open(filename)?;
     let reader = BufReader::new(f);
-    let mut lines = reader.lines().map(|l| l.unwrap());
+    let mut lines = reader.lines().flatten();
     let movements = Vec::from_iter(lines.next().unwrap().chars());
     lines.next();
 
@@ -89,9 +88,9 @@ fn get_data(filename: &String) -> Data {
     let triples = lines.map(process_line);
     let tmp1: (Vec<(String, String)>, Vec<(String, String)>) =
         triples.map(|t| ((t.0.clone(), t.1), (t.0, t.2))).unzip();
-    Data {
+    Ok(Data {
         movements,
         node_to_left_node: HashMap::from_iter(tmp1.0),
         node_to_right_node: HashMap::from_iter(tmp1.1),
-    }
+    })
 }
