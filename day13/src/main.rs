@@ -1,3 +1,4 @@
+use anyhow::Result;
 use itertools::iproduct;
 use std::env;
 use std::fs::File;
@@ -6,9 +7,10 @@ use std::io::BufReader;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let patterns = get_patterns(&args[1]);
-    println!("{:?}", process_for_part1(&patterns));
-    println!("{:?}", process_for_part2(&patterns));
+    if let Ok(patterns) = get_patterns(&args[1]) {
+        println!("{:?}", process_for_part1(&patterns));
+        println!("{:?}", process_for_part2(&patterns));
+    }
 }
 
 fn process_for_part1(patterns: &Vec<Vec<String>>) -> usize {
@@ -89,14 +91,14 @@ fn transpose(pattern: &Vec<String>) -> Vec<String> {
     transpose
 }
 
-fn get_patterns(filename: &String) -> Vec<Vec<String>> {
+fn get_patterns(filename: &String) -> Result<Vec<Vec<String>>> {
     let mut patterns = Vec::new();
 
-    let f = File::open(filename).unwrap();
+    let f = File::open(filename)?;
     let reader = BufReader::new(f);
     let mut cur_pattern = Vec::new();
 
-    for line in reader.lines().map(|l| l.unwrap()) {
+    for line in reader.lines().flatten() {
         if line.is_empty() {
             if !cur_pattern.is_empty() {
                 patterns.push(cur_pattern.clone());
@@ -110,5 +112,5 @@ fn get_patterns(filename: &String) -> Vec<Vec<String>> {
         patterns.push(cur_pattern);
     }
 
-    patterns
+    Ok(patterns)
 }
